@@ -1,0 +1,93 @@
+:root {
+  /* Strict 8-Bit Monochrome Palette: Black / Gray / White */
+  --bg-page: #f0f0f0;
+  --bg-surface: #ffffff;
+  --bg-subtle: #e4e4e4;
+  --bg-mid: #c8c8c8;
+  --border-gray: #9e9e9e;
+  --ink-black: #141414;
+  --ink-dark: #333333;
+  --ink-muted: #545454;
+
+  /* 8-Bit Bitmap Pixel Typography */
+  --font-pixel: 'DotGothic16', 'Silkscreen', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', monospace;
+  --font-mono: 'Silkscreen', 'DotGothic16', 'JetBrains Mono', 'SFMono-Regular', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::selection {
+  background-color: var(--ink-black);
+  color: var(--bg-surface);
+}
+
+/* Monochrome 8-Bit Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-subtle);
+  border-left: 2px solid var(--ink-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-black);
+  border: 2px solid var(--bg-subtle);
+}
+
+html {
+  background-color: var(--bg-page);
+  color: var(--ink-black);
+  font-family: var(--font-pixel);
+  line-height: 1.45;
+  scrollbar-color: var(--ink-black) var(--bg-subtle);
+  scrollbar-width: thin;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg-page);
+  /* Subtle 8-Bit Monochrome Pixel Dot Matrix Grid */
+  background-image: radial-gradient(#d4d4d4 1px, transparent 1px);
+  background-size: 8px 8px;
+  color: var(--ink-black);
+  display: flex;
+  flex-direction: column;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px dashed var(--ink-black);
+  outline-offset: 2px;
+}
+
+.pixel-canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

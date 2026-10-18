@@ -1,0 +1,26 @@
+---
+import '../styles/global.css';
+import AvatarCreator from '../components/AvatarCreator.astro';
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>8-BIT 像素大頭照製圖所 — 32×32 角色拆解與色系調配</title>
+    <meta
+      name="description"
+      content="使用 Astro 打造的 8-Bit 像素大頭照創建工具，拆解 32x32 角色五官與配件自由搭配，內建「一切交由上天安排」隨機按鈕與 1-Bit / 2-Bit 四階色系調配。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <AvatarCreator />
+  </body>
+</html>

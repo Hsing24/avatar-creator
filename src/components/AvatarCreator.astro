@@ -1,0 +1,1348 @@
+---
+import { PART_CATEGORIES, PART_ITEMS_MAP } from '../lib/avatar-data';
+import { PALETTE_PRESETS } from '../lib/palettes';
+---
+
+<div class="page-container">
+  <!-- 頂部 8-Bit 系統導覽列 (純黑灰白像素風格) -->
+  <header class="topbar">
+    <a href={import.meta.env.BASE_URL} class="brand-link">
+      <div class="brand-logo-box" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 16 16" fill="none" shape-rendering="crispEdges">
+          <rect x="1" y="1" width="14" height="14" fill="#141414" />
+          <rect x="2" y="2" width="12" height="12" fill="#FFFFFF" />
+          <rect x="3" y="3" width="10" height="2" fill="#141414" />
+          <rect x="4" y="6" width="2" height="3" fill="#141414" />
+          <rect x="10" y="6" width="2" height="3" fill="#141414" />
+          <rect x="5" y="11" width="6" height="2" fill="#141414" />
+        </svg>
+      </div>
+      <div class="brand-text-wrap">
+        <span class="brand-title">8-BIT 頭像製作</span>
+        <span class="brand-sub tabular-nums">SYS.32×32 // MONO-OS</span>
+      </div>
+    </a>
+
+    <div class="topbar-meta">
+      <span class="color-badge tabular-nums" id="header-color-badge">MODE: 1-BIT MONO</span>
+    </div>
+  </header>
+
+  <!-- 核心單欄置中工作區 (對齊 notion-avatar.app 結構，全站黑灰白 8-Bit 視窗介面) -->
+  <main class="creator-main">
+    <!-- 1. 正中央 8-Bit 像素監視器預覽視窗 -->
+    <div class="avatar-stage-wrap">
+      <div class="pixel-window-frame">
+        <div class="pixel-window-titlebar" aria-hidden="true">
+          <span class="win-square-box"></span>
+          <span class="win-scanlines"></span>
+          <span class="win-title-label tabular-nums">SPRITE_32×32.BMP</span>
+          <span class="win-scanlines"></span>
+          <span class="win-coord-tag tabular-nums">1:1</span>
+        </div>
+        <div class="avatar-preview-box">
+          <canvas
+            id="main-avatar-canvas"
+            class="pixel-canvas main-avatar-canvas"
+            width="512"
+            height="512"
+            aria-label="8-Bit 像素大頭照預覽"
+          ></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 「請選擇一種風格」工具列 ＋ 10 大獨立部位選擇器 -->
+    <section class="picker-section" aria-label="頭像部位與色系選擇">
+      <div class="toolbar-row">
+        <h1 class="section-prompt">請選擇一種風格</h1>
+
+        <div class="tool-trigger-group">
+          <!-- 水平翻轉按鈕 (8-Bit 像素圖示) -->
+          <button
+            type="button"
+            class="icon-tool-btn"
+            id="btn-flip-x"
+            title="水平翻轉"
+            aria-label="水平翻轉"
+            aria-pressed="false"
+          >
+            <svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges">
+              <!-- 中央虛線軸 -->
+              <rect x="7" y="1" width="2" height="2" />
+              <rect x="7" y="5" width="2" height="2" />
+              <rect x="7" y="9" width="2" height="2" />
+              <rect x="7" y="13" width="2" height="2" />
+              <!-- 左側像素三角 -->
+              <rect x="4" y="4" width="2" height="8" />
+              <rect x="2" y="6" width="2" height="4" />
+              <rect x="1" y="7" width="1" height="2" />
+              <!-- 右側像素三角 -->
+              <rect x="10" y="4" width="2" height="8" />
+              <rect x="12" y="6" width="2" height="4" />
+              <rect x="14" y="7" width="1" height="2" />
+            </svg>
+          </button>
+
+          <!-- 色系調配按鈕 (對應 8-bit_3.jpg 黑白 vs 8-bit_2.jpg 使用者顏色自動搭配) -->
+          <div class="palette-dropdown-anchor">
+            <button
+              type="button"
+              class="icon-tool-btn palette-trigger-btn"
+              id="btn-toggle-palette"
+              title="色系調配"
+              aria-label="色系調配"
+              aria-expanded="false"
+            >
+              <svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges">
+                <!-- 8-Bit 像素調色盤圖示 -->
+                <rect x="4" y="2" width="8" height="2" />
+                <rect x="2" y="4" width="2" height="8" />
+                <rect x="12" y="4" width="2" height="6" />
+                <rect x="4" y="12" width="6" height="2" />
+                <rect x="9" y="10" width="3" height="2" />
+                <!-- 色盤孔點 -->
+                <rect x="5" y="5" width="2" height="2" />
+                <rect x="9" y="5" width="2" height="2" />
+                <rect x="5" y="9" width="2" height="2" />
+              </svg>
+              <span class="palette-dot-indicator" id="palette-dot-indicator"></span>
+            </button>
+
+            <!-- 色系調配彈出面板 (8-Bit 視窗框體) -->
+            <div class="palette-popover is-hidden" id="palette-popover" role="dialog" aria-label="色系調配設定">
+              <div class="popover-header">
+                <strong>[ 色系調配 // 4-TONE PALETTE ]</strong>
+                <button type="button" class="close-popover-btn" id="btn-close-palette" aria-label="關閉色系面板">✕</button>
+              </div>
+
+              <p class="popover-hint">
+                預設為黑白線稿；選擇任意顏色後，系統會自動依您的顏色推算 4 階深淺進行搭配。
+              </p>
+
+              <!-- 使用者自選顏色 (Color Picker) + 恢復黑白按鈕 -->
+              <div class="user-color-row">
+                <label class="user-color-picker-btn" for="input-user-color">
+                  <input type="color" id="input-user-color" value="#88C070" />
+                  <span class="color-circle-preview" id="user-color-preview" style="background:#88C070"></span>
+                  <span class="user-color-text">
+                    <strong>自選顏色自動搭配</strong>
+                    <small id="user-color-hex" class="tabular-nums">點擊調色 (#88C070)</small>
+                  </span>
+                </label>
+
+                <button type="button" class="mono-restore-btn is-active" id="btn-restore-mono">
+                  <span class="mono-half-icon"></span>
+                  <span>無色系 (黑白)</span>
+                </button>
+              </div>
+
+              <!-- 當前自動配出的 4 階色票預覽 (亦可點擊個別微調) -->
+              <div class="tone-strip-box">
+                <span class="sub-title">目前色系 4 階深淺（點擊色塊可單獨微調）：</span>
+                <div class="tone-squares">
+                  {[0, 1, 2, 3].map((idx) => (
+                    <label class="tone-item" title={`微調第 ${idx + 1} 階顏色`}>
+                      <input type="color" class="tone-single-input" data-tone-idx={idx} value="#000000" />
+                      <span class="tone-box" data-tone-box={idx}></span>
+                      <code class="tone-code tabular-nums" data-tone-code={idx}>#000000</code>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <!-- 經典色系快選 -->
+              <div class="preset-colors-section">
+                <span class="sub-title">或選擇預設色系：</span>
+                <div class="preset-swatches-grid">
+                  {PALETTE_PRESETS.map((preset) => (
+                    <button
+                      type="button"
+                      class="preset-swatch-btn"
+                      data-preset-palette={JSON.stringify(preset.colors)}
+                      data-preset-name={preset.name}
+                    >
+                      <span class="quad-mini">
+                        {preset.colors.map((c) => (
+                          <i style={`background:${c}`}></i>
+                        ))}
+                      </span>
+                      <span>{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <!-- 彩色模式下的膚色深淺與背景樣式切換 -->
+              <div class="extra-color-options">
+                <div class="option-group">
+                  <span class="sub-title">膚色深淺階：</span>
+                  <div class="pill-row">
+                    <button type="button" class="mini-pill" data-skin-tone="3">淺亮階</button>
+                    <button type="button" class="mini-pill is-active" data-skin-tone="2">自然中階</button>
+                    <button type="button" class="mini-pill" data-skin-tone="1">深色暗階</button>
+                  </div>
+                </div>
+                <div class="option-group">
+                  <span class="sub-title">背景網點：</span>
+                  <div class="pill-row">
+                    <button type="button" class="mini-pill is-active" data-bg-style="solid-2">中色底</button>
+                    <button type="button" class="mini-pill" data-bg-style="solid-3">亮色底</button>
+                    <button type="button" class="mini-pill" data-bg-style="solid-1">深色底</button>
+                    <button type="button" class="mini-pill" data-bg-style="checker">棋盤格</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10 個獨立部位選擇器方塊 (對齊 notion-avatar.app 10 格結構，採用 8-Bit 黑灰白像素插槽) -->
+      <div class="part-category-bar" role="tablist" aria-label="人物頭像 10 大拆解部位">
+        {PART_CATEGORIES.map((cat, idx) => (
+          <div class="cat-picker-cell">
+            <button
+              type="button"
+              role="tab"
+              class={`cat-box-btn ${idx === 0 ? 'is-active' : ''}`}
+              data-cat-key={cat.key}
+              aria-selected={idx === 0 ? 'true' : 'false'}
+              title={cat.label}
+            >
+              <canvas
+                class="pixel-canvas cat-current-canvas"
+                width="84"
+                height="84"
+                data-cat-summary-canvas={cat.key}
+              ></canvas>
+            </button>
+            <span class="cat-box-label">{cat.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <!-- 當前展開部位的「單獨拆解元素」8-Bit 視窗網格 -->
+      <div class="part-options-drawer">
+        <div class="drawer-header">
+          <div class="drawer-title-group">
+            <span class="drawer-pixel-bullet" aria-hidden="true">■</span>
+            <span class="drawer-title" id="drawer-category-title">臉型 — 選擇元素搭配</span>
+          </div>
+          <span class="drawer-coord-note tabular-nums">GRID: 32×32 COORD</span>
+        </div>
+
+        {PART_CATEGORIES.map((cat, catIdx) => {
+          const items = PART_ITEMS_MAP[cat.key];
+          return (
+            <div
+              class={`isolated-parts-grid ${catIdx === 0 ? 'is-open' : ''}`}
+              data-options-grid={cat.key}
+              role="tabpanel"
+            >
+              {items.map((item, itemIdx) => (
+                <button
+                  type="button"
+                  class={`isolated-item-btn ${itemIdx === 0 ? 'is-selected' : ''}`}
+                  data-select-cat={cat.key}
+                  data-select-idx={itemIdx}
+                  title={item.name}
+                >
+                  <canvas
+                    class="pixel-canvas isolated-item-canvas"
+                    width="96"
+                    height="96"
+                    data-isolated-cat={cat.key}
+                    data-isolated-idx={itemIdx}
+                  ></canvas>
+                  <span class="isolated-item-name">{item.name}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+
+    <!-- 3. 底部 8-Bit 實體按鍵列 -->
+    <section class="action-buttons-row" aria-label="隨機搭配與下載">
+      <button type="button" class="pixel-action-btn primary-random-btn" id="btn-destiny-random">
+        <svg class="dice-svg" width="22" height="22" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges">
+          <!-- 8-Bit 像素骰子外框 -->
+          <rect x="2" y="1" width="12" height="1" />
+          <rect x="2" y="14" width="12" height="1" />
+          <rect x="1" y="2" width="1" height="12" />
+          <rect x="14" y="2" width="1" height="12" />
+          <!-- 像素五點 -->
+          <rect x="4" y="4" width="2" height="2" />
+          <rect x="10" y="4" width="2" height="2" />
+          <rect x="7" y="7" width="2" height="2" />
+          <rect x="4" y="10" width="2" height="2" />
+          <rect x="10" y="10" width="2" height="2" />
+        </svg>
+        <span>一切交由上天安排</span>
+      </button>
+
+      <button type="button" class="pixel-action-btn" id="btn-download-png">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges">
+          <!-- 8-Bit 像素下載箭頭 -->
+          <rect x="7" y="2" width="2" height="7" />
+          <rect x="5" y="7" width="6" height="2" />
+          <rect x="6" y="9" width="4" height="1" />
+          <rect x="7" y="10" width="2" height="1" />
+          <!-- 底部像素托盤 -->
+          <rect x="2" y="11" width="2" height="3" />
+          <rect x="12" y="11" width="2" height="3" />
+          <rect x="4" y="13" width="8" height="1" />
+        </svg>
+        <span>下載 PNG</span>
+      </button>
+
+      <button type="button" class="pixel-action-btn" id="btn-download-svg">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges">
+          <!-- 8-Bit 像素程式碼角括號 < > -->
+          <rect x="5" y="4" width="2" height="2" />
+          <rect x="3" y="6" width="2" height="2" />
+          <rect x="2" y="7" width="1" height="2" />
+          <rect x="3" y="8" width="2" height="2" />
+          <rect x="5" y="10" width="2" height="2" />
+          <rect x="9" y="4" width="2" height="2" />
+          <rect x="11" y="6" width="2" height="2" />
+          <rect x="13" y="7" width="1" height="2" />
+          <rect x="11" y="8" width="2" height="2" />
+          <rect x="9" y="10" width="2" height="2" />
+        </svg>
+        <span>下載 SVG</span>
+      </button>
+    </section>
+  </main>
+</div>
+
+<script>
+  import {
+    type AvatarState,
+    type BgStyleId,
+    type PartCategoryKey,
+    type SkinToneLevel,
+    PART_CATEGORIES,
+    PART_ITEMS_MAP,
+  } from '../lib/avatar-data';
+  import {
+    type ColorMode,
+    type FourTonePalette,
+    PALETTE_PRESETS,
+    generatePaletteFromSeedColor,
+  } from '../lib/palettes';
+  import {
+    renderAvatarToCanvas,
+    renderIsolatedPartToCanvas,
+    generateAvatarSVG,
+    generateRandomAvatarState,
+    createDefaultAvatarState,
+  } from '../lib/renderer';
+
+  // --- State ---
+  // 預設為 'mono' 黑白模式（8-bit_3.jpg 風格）；當使用者選擇顏色時自動切換為 'palette'（8-bit_2.jpg 風格）
+  let state: AvatarState = createDefaultAvatarState();
+  let colorMode: ColorMode = 'mono';
+  let palette: FourTonePalette = [...PALETTE_PRESETS[0].colors] as FourTonePalette;
+  let activeColorLabel = '原始黑白模式';
+  let activeCategory: PartCategoryKey = 'face';
+
+  const mainCanvas = document.getElementById('main-avatar-canvas') as HTMLCanvasElement | null;
+  const headerBadge = document.getElementById('header-color-badge');
+  const palettePopover = document.getElementById('palette-popover');
+  const btnTogglePalette = document.getElementById('btn-toggle-palette');
+  const paletteDot = document.getElementById('palette-dot-indicator');
+  const inputUserColor = document.getElementById('input-user-color') as HTMLInputElement | null;
+  const userColorPreview = document.getElementById('user-color-preview');
+  const userColorHex = document.getElementById('user-color-hex');
+  const btnRestoreMono = document.getElementById('btn-restore-mono');
+  const drawerTitle = document.getElementById('drawer-category-title');
+
+  function renderAll() {
+    // 1. 渲染正中央組合後的大頭照
+    if (mainCanvas) {
+      renderAvatarToCanvas(mainCanvas, state, colorMode, palette);
+    }
+
+    // 2. 渲染 10 個部位分類方塊上的「當前選中單獨元素圖案」
+    PART_CATEGORIES.forEach(({ key }) => {
+      const summaryCanvas = document.querySelector<HTMLCanvasElement>(
+        `canvas[data-cat-summary-canvas="${key}"]`
+      );
+      if (!summaryCanvas) return;
+      const items = PART_ITEMS_MAP[key];
+      const selectedIdx = state[key] as number;
+      const item = items[selectedIdx] ?? items[0];
+      renderIsolatedPartToCanvas(summaryCanvas, item, key, colorMode, palette, state.skinTone);
+    });
+
+    // 3. 渲染當前打開分類下的所有「單獨拆解元素」選項縮圖
+    const activeGrid = document.querySelector<HTMLElement>(
+      `.isolated-parts-grid[data-options-grid="${activeCategory}"]`
+    );
+    if (activeGrid) {
+      const items = PART_ITEMS_MAP[activeCategory];
+      activeGrid.querySelectorAll<HTMLCanvasElement>('canvas[data-isolated-idx]').forEach((c) => {
+        const idx = Number(c.dataset.isolatedIdx);
+        const item = items[idx];
+        if (item) {
+          renderIsolatedPartToCanvas(c, item, activeCategory, colorMode, palette, state.skinTone);
+        }
+      });
+    }
+
+    // 4. 更新選中狀態外框
+    PART_CATEGORIES.forEach(({ key }) => {
+      const selectedIdx = state[key] as number;
+      document
+        .querySelectorAll<HTMLElement>(`.isolated-item-btn[data-select-cat="${key}"]`)
+        .forEach((btn) => {
+          btn.classList.toggle('is-selected', Number(btn.dataset.selectIdx) === selectedIdx);
+        });
+    });
+
+    // 5. 更新色系 UI 顯示 (維持全站黑灰白介面配置)
+    const isMono = colorMode === 'mono';
+    btnRestoreMono?.classList.toggle('is-active', isMono);
+    if (headerBadge) {
+      headerBadge.textContent = isMono ? 'MODE: 1-BIT 黑白' : `PALETTE: ${activeColorLabel}`;
+    }
+    if (paletteDot) {
+      paletteDot.style.backgroundColor = isMono ? '#141414' : palette[2];
+    }
+
+    for (let i = 0; i < 4; i++) {
+      const hex = palette[i].toUpperCase();
+      const box = document.querySelector<HTMLElement>(`[data-tone-box="${i}"]`);
+      const code = document.querySelector<HTMLElement>(`[data-tone-code="${i}"]`);
+      const inp = document.querySelector<HTMLInputElement>(`.tone-single-input[data-tone-idx="${i}"]`);
+      if (box) box.style.backgroundColor = hex;
+      if (code) code.textContent = hex;
+      if (inp) inp.value = hex;
+    }
+
+    document.querySelectorAll<HTMLElement>('[data-skin-tone]').forEach((btn) => {
+      btn.classList.toggle('is-active', Number(btn.dataset.skinTone) === state.skinTone);
+    });
+    document.querySelectorAll<HTMLElement>('[data-bg-style]').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.bgStyle === state.bgStyle);
+    });
+  }
+
+  // --- Events ---
+
+  // 切換 10 個部位分類 Tab
+  document.querySelectorAll<HTMLButtonElement>('.cat-box-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = (btn.dataset.catKey ?? 'face') as PartCategoryKey;
+      activeCategory = key;
+
+      document.querySelectorAll<HTMLButtonElement>('.cat-box-btn').forEach((b) => {
+        const active = b.dataset.catKey === key;
+        b.classList.toggle('is-active', active);
+        b.setAttribute('aria-selected', String(active));
+      });
+
+      document.querySelectorAll<HTMLElement>('.isolated-parts-grid').forEach((grid) => {
+        grid.classList.toggle('is-open', grid.dataset.optionsGrid === key);
+      });
+
+      const catObj = PART_CATEGORIES.find((c) => c.key === key);
+      if (drawerTitle && catObj) {
+        drawerTitle.textContent = `${catObj.label} — 選擇拆解元素搭配`;
+      }
+
+      renderAll();
+    });
+  });
+
+  // 點擊某個單獨拆解元素進行穿戴
+  document.querySelectorAll<HTMLButtonElement>('.isolated-item-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cat = btn.dataset.selectCat as PartCategoryKey;
+      const idx = Number(btn.dataset.selectIdx);
+      if (cat) {
+        (state as unknown as Record<string, number>)[cat] = idx;
+        renderAll();
+      }
+    });
+  });
+
+  // 水平翻轉按鈕
+  const btnFlipX = document.getElementById('btn-flip-x');
+  btnFlipX?.addEventListener('click', () => {
+    state.flipX = !state.flipX;
+    btnFlipX.classList.toggle('is-active', state.flipX);
+    btnFlipX.setAttribute('aria-pressed', String(state.flipX));
+    renderAll();
+  });
+
+  // 打開 / 關閉色系調配面板
+  btnTogglePalette?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = palettePopover?.classList.toggle('is-hidden');
+    btnTogglePalette.setAttribute('aria-expanded', String(!isHidden));
+  });
+
+  document.getElementById('btn-close-palette')?.addEventListener('click', () => {
+    palettePopover?.classList.add('is-hidden');
+    btnTogglePalette?.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('click', (e) => {
+    const target = e.target as Node;
+    if (
+      palettePopover &&
+      !palettePopover.classList.contains('is-hidden') &&
+      !palettePopover.contains(target) &&
+      !btnTogglePalette?.contains(target)
+    ) {
+      palettePopover.classList.add('is-hidden');
+      btnTogglePalette?.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // 使用者挑選任意顏色 -> 自動推算 4 階深淺並套用色系！
+  inputUserColor?.addEventListener('input', () => {
+    const hex = inputUserColor.value.toUpperCase();
+    palette = generatePaletteFromSeedColor(hex);
+    colorMode = 'palette';
+    activeColorLabel = `自訂色 ${hex}`;
+
+    if (userColorPreview) userColorPreview.style.backgroundColor = hex;
+    if (userColorHex) userColorHex.textContent = `已套用 (${hex})`;
+    document.querySelectorAll('.preset-swatch-btn').forEach((b) => b.classList.remove('is-selected'));
+    renderAll();
+  });
+
+  // 恢復無色系（原始黑白 8-bit_3 模式）
+  btnRestoreMono?.addEventListener('click', () => {
+    colorMode = 'mono';
+    activeColorLabel = '原始黑白模式';
+    document.querySelectorAll('.preset-swatch-btn').forEach((b) => b.classList.remove('is-selected'));
+    renderAll();
+  });
+
+  // 點選預設色系
+  document.querySelectorAll<HTMLButtonElement>('.preset-swatch-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const raw = btn.dataset.presetPalette;
+      if (!raw) return;
+      palette = JSON.parse(raw) as FourTonePalette;
+      colorMode = 'palette';
+      activeColorLabel = btn.dataset.presetName ?? '預設色系';
+
+      document.querySelectorAll('.preset-swatch-btn').forEach((b) => b.classList.remove('is-selected'));
+      btn.classList.add('is-selected');
+
+      if (inputUserColor && userColorPreview && userColorHex) {
+        inputUserColor.value = palette[2];
+        userColorPreview.style.backgroundColor = palette[2];
+        userColorHex.textContent = `點擊調色 (${palette[2]})`;
+      }
+      renderAll();
+    });
+  });
+
+  // 個別微調 4 階色塊
+  document.querySelectorAll<HTMLInputElement>('.tone-single-input').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      const idx = Number(inp.dataset.toneIdx);
+      if (idx >= 0 && idx < 4) {
+        palette[idx] = inp.value.toUpperCase();
+        colorMode = 'palette';
+        activeColorLabel = '自訂四階微調';
+        renderAll();
+      }
+    });
+  });
+
+  // 膚色與背景切換
+  document.querySelectorAll<HTMLButtonElement>('[data-skin-tone]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.skinTone = Number(btn.dataset.skinTone) as SkinToneLevel;
+      colorMode = 'palette';
+      renderAll();
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-bg-style]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.bgStyle = (btn.dataset.bgStyle ?? 'solid-2') as BgStyleId;
+      colorMode = 'palette';
+      renderAll();
+    });
+  });
+
+  // 「一切交由上天安排」隨機按鈕
+  let rollInterval: number | null = null;
+  document.getElementById('btn-destiny-random')?.addEventListener('click', () => {
+    if (rollInterval !== null) window.clearInterval(rollInterval);
+    const btn = document.getElementById('btn-destiny-random');
+    btn?.classList.add('is-rolling');
+
+    let step = 0;
+    rollInterval = window.setInterval(() => {
+      step++;
+      state = generateRandomAvatarState(state);
+      renderAll();
+      if (step >= 5) {
+        if (rollInterval !== null) window.clearInterval(rollInterval);
+        rollInterval = null;
+        btn?.classList.remove('is-rolling');
+      }
+    }, 45);
+  });
+
+  // 下載 PNG 與 SVG
+  function triggerDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  document.getElementById('btn-download-png')?.addEventListener('click', () => {
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1024;
+    exportCanvas.height = 1024;
+    renderAvatarToCanvas(exportCanvas, state, colorMode, palette);
+    exportCanvas.toBlob((blob) => {
+      if (blob) triggerDownload(blob, '8bit-avatar.png');
+    }, 'image/png');
+  });
+
+  document.getElementById('btn-download-svg')?.addEventListener('click', () => {
+    const svg = generateAvatarSVG(state, colorMode, palette);
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    triggerDownload(blob, '8bit-avatar.svg');
+  });
+
+  // 初始繪製所有元素與畫布
+  PART_CATEGORIES.forEach(({ key }) => {
+    const grid = document.querySelector<HTMLElement>(`.isolated-parts-grid[data-options-grid="${key}"]`);
+    if (!grid) return;
+    const items = PART_ITEMS_MAP[key];
+    grid.querySelectorAll<HTMLCanvasElement>('canvas[data-isolated-idx]').forEach((c) => {
+      const idx = Number(c.dataset.isolatedIdx);
+      if (items[idx]) {
+        renderIsolatedPartToCanvas(c, items[idx], key, colorMode, palette, state.skinTone);
+      }
+    });
+  });
+  renderAll();
+</script>
+
+<style>
+  .page-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    max-width: 1040px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 1.25rem 3.5rem;
+  }
+
+  /* 8-Bit Monochrome Header */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 3px solid var(--ink-black);
+    margin-bottom: 1.25rem;
+  }
+
+  .brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--ink-black);
+  }
+
+  .brand-logo-box {
+    width: 44px;
+    height: 44px;
+    border: 3px solid var(--ink-black);
+    background-color: var(--bg-surface);
+    box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
+    display: grid;
+    place-items: center;
+  }
+
+  .brand-text-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .brand-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.15;
+  }
+
+  .brand-sub {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+  }
+
+  .color-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    border: 2px solid var(--ink-black);
+    background-color: var(--bg-surface);
+    color: var(--ink-black);
+    box-shadow: inset -2px -2px 0 var(--bg-subtle);
+  }
+
+  /* Main Centered Layout (Notion Avatar Workflow + 8-Bit Pixel Window Frame) */
+  .creator-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 780px;
+    margin: 0.25rem auto 0;
+  }
+
+  .avatar-stage-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.35rem;
+  }
+
+  .pixel-window-frame {
+    border: 3px solid var(--ink-black);
+    background-color: var(--bg-surface);
+    padding: 6px;
+    box-shadow:
+      inset -2px -2px 0 var(--bg-mid),
+      inset 2px 2px 0 var(--bg-surface),
+      0 10px 26px rgba(20, 20, 20, 0.1);
+  }
+
+  .pixel-window-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 6px;
+    margin-bottom: 6px;
+    background-color: var(--bg-subtle);
+    border: 2px solid var(--ink-black);
+  }
+
+  .win-square-box {
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--ink-black);
+    background-color: var(--bg-surface);
+    flex-shrink: 0;
+  }
+
+  .win-scanlines {
+    flex: 1;
+    height: 10px;
+    background-image: repeating-linear-gradient(
+      0deg,
+      var(--ink-black) 0px,
+      var(--ink-black) 2px,
+      transparent 2px,
+      transparent 4px
+    );
+  }
+
+  .win-title-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0 4px;
+    color: var(--ink-black);
+    white-space: nowrap;
+  }
+
+  .win-coord-tag {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 0 4px;
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+  }
+
+  .avatar-preview-box {
+    width: 240px;
+    height: 240px;
+    border: 3px solid var(--ink-black);
+    background-color: var(--bg-page);
+  }
+
+  @media (min-width: 768px) {
+    .avatar-preview-box {
+      width: 268px;
+      height: 268px;
+    }
+  }
+
+  .main-avatar-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Picker Section */
+  .picker-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+  }
+
+  .toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-prompt {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink-black);
+  }
+
+  .tool-trigger-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .icon-tool-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: 3px solid var(--ink-black);
+    background-color: var(--bg-surface);
+    color: var(--ink-black);
+    box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 100ms steps(2), color 100ms steps(2);
+  }
+
+  .icon-tool-btn:hover {
+    background-color: var(--bg-subtle);
+  }
+
+  .icon-tool-btn.is-active {
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+    box-shadow: inset 2px 2px 0 var(--ink-dark);
+  }
+
+  .palette-dot-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid var(--ink-black);
+    background-color: var(--ink-black);
+  }
+
+  .palette-dropdown-anchor {
+    position: relative;
+  }
+
+  /* 8-Bit Monochrome Palette Popover */
+  .palette-popover {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: min(390px, 92vw);
+    background-color: var(--bg-surface);
+    border: 3px solid var(--ink-black);
+    padding: 1rem;
+    z-index: 40;
+    box-shadow:
+      inset -2px -2px 0 var(--bg-mid),
+      inset 2px 2px 0 var(--bg-surface),
+      0 14px 32px rgba(20, 20, 20, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .is-hidden {
+    display: none !important;
+  }
+
+  .popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 0.55rem;
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+    font-size: 0.85rem;
+  }
+
+  .close-popover-btn {
+    width: 24px;
+    height: 24px;
+    border: 1.5px solid var(--bg-surface);
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .close-popover-btn:hover {
+    background-color: var(--ink-dark);
+  }
+
+  .popover-hint {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    line-height: 1.45;
+  }
+
+  .user-color-row {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .user-color-picker-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.6rem;
+    border: 2px solid var(--ink-black);
+    background-color: var(--bg-subtle);
+    box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
+    cursor: pointer;
+  }
+
+  .user-color-picker-btn input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  .color-circle-preview {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--ink-black);
+    flex-shrink: 0;
+  }
+
+  .user-color-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+
+  .user-color-text strong {
+    font-size: 0.8rem;
+  }
+
+  .user-color-text small {
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+  }
+
+  .mono-restore-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.5rem;
+    border: 2px solid var(--ink-black);
+    font-size: 0.8rem;
+    font-weight: 700;
+    background-color: var(--bg-surface);
+    box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
+  }
+
+  .mono-restore-btn.is-active {
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+    box-shadow: none;
+  }
+
+  .mono-half-icon {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid currentColor;
+    background: linear-gradient(90deg, #141414 50%, #ffffff 50%);
+    flex-shrink: 0;
+  }
+
+  .tone-strip-box,
+  .preset-colors-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .sub-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--ink-muted);
+  }
+
+  .tone-squares {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+  }
+
+  .tone-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    cursor: pointer;
+  }
+
+  .tone-single-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  .tone-box {
+    width: 100%;
+    height: 24px;
+    border: 2px solid var(--ink-black);
+  }
+
+  .tone-code {
+    font-size: 0.66rem;
+    font-family: var(--font-mono);
+  }
+
+  .preset-swatches-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+  }
+
+  .preset-swatch-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.55rem;
+    border: 2px solid var(--ink-black);
+    font-size: 0.78rem;
+    font-weight: 700;
+    background-color: var(--bg-surface);
+    box-shadow: inset -2px -2px 0 var(--bg-subtle);
+    text-align: left;
+  }
+
+  .preset-swatch-btn:hover,
+  .preset-swatch-btn.is-selected {
+    background-color: var(--bg-subtle);
+    box-shadow: inset 2px 2px 0 var(--bg-mid);
+  }
+
+  .quad-mini {
+    display: inline-grid;
+    grid-template-columns: repeat(2, 8px);
+    grid-template-rows: repeat(2, 8px);
+    border: 1px solid var(--ink-black);
+    flex-shrink: 0;
+  }
+
+  .quad-mini i {
+    width: 8px;
+    height: 8px;
+    display: block;
+  }
+
+  .extra-color-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 2px dashed var(--bg-mid);
+  }
+
+  .option-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .pill-row {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .mini-pill {
+    padding: 0.22rem 0.5rem;
+    border: 2px solid var(--ink-black);
+    font-size: 0.72rem;
+    font-weight: 700;
+    background-color: var(--bg-surface);
+  }
+
+  .mini-pill.is-active {
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+  }
+
+  /* 10 Part Category Row (8-Bit Monochrome Pixel Slots) */
+  .part-category-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    justify-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .part-category-bar {
+      grid-template-columns: repeat(10, 1fr);
+      gap: 0.5rem;
+    }
+  }
+
+  .cat-picker-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .cat-box-btn {
+    width: 60px;
+    height: 60px;
+    border: 3px solid var(--ink-black);
+    padding: 4px;
+    background-color: var(--bg-surface);
+    box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 80ms steps(2), background-color 80ms steps(2);
+  }
+
+  .cat-box-btn:hover {
+    background-color: var(--bg-subtle);
+    transform: translateY(-2px);
+  }
+
+  .cat-box-btn.is-active {
+    background-color: var(--ink-black);
+    box-shadow: none;
+  }
+
+  .cat-current-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 1px solid var(--border-gray);
+  }
+
+  .cat-box-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink-black);
+  }
+
+  /* Options Drawer (8-Bit Monochrome Inventory Window) */
+  .part-options-drawer {
+    background-color: var(--bg-surface);
+    border: 3px solid var(--ink-black);
+    padding: 0.9rem 1rem 1.05rem;
+    box-shadow:
+      inset -2px -2px 0 var(--bg-mid),
+      inset 2px 2px 0 var(--bg-surface),
+      0 10px 24px rgba(20, 20, 20, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.4rem 0.65rem;
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+  }
+
+  .drawer-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .drawer-pixel-bullet {
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+
+  .drawer-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  .drawer-coord-note {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--bg-subtle);
+  }
+
+  .isolated-parts-grid {
+    display: none;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 0.65rem;
+    padding: 2px;
+  }
+
+  .isolated-parts-grid.is-open {
+    display: grid;
+  }
+
+  .isolated-item-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.35rem;
+    border: 2px solid var(--border-gray);
+    background-color: var(--bg-subtle);
+    box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
+    transition: border-color 80ms steps(2), background-color 80ms steps(2);
+  }
+
+  .isolated-item-btn:hover {
+    border-color: var(--ink-black);
+    background-color: var(--bg-surface);
+  }
+
+  .isolated-item-btn.is-selected {
+    border: 3px solid var(--ink-black);
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+    box-shadow: none;
+  }
+
+  .isolated-item-canvas {
+    width: 64px;
+    height: 64px;
+    border: 2px solid var(--ink-black);
+    background-color: var(--bg-surface);
+  }
+
+  .isolated-item-name {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: inherit;
+    text-align: center;
+    line-height: 1.25;
+  }
+
+  /* Bottom 8-Bit Push Buttons */
+  .action-buttons-row {
+    width: 100%;
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+  }
+
+  .pixel-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.4rem;
+    min-width: 184px;
+    border: 3px solid var(--ink-black);
+    background-color: var(--bg-surface);
+    color: var(--ink-black);
+    box-shadow: inset -3px -3px 0 var(--bg-mid), inset 3px 3px 0 var(--bg-surface);
+    font-size: 0.96rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    transition: background-color 80ms steps(2), transform 80ms steps(2);
+  }
+
+  .pixel-action-btn:hover {
+    background-color: var(--bg-subtle);
+    transform: translateY(-1px);
+  }
+
+  .pixel-action-btn:active {
+    transform: translateY(1px);
+    box-shadow: inset 2px 2px 0 var(--bg-mid);
+  }
+
+  .primary-random-btn {
+    background-color: var(--ink-black);
+    color: var(--bg-surface);
+    min-width: 236px;
+    box-shadow: inset -3px -3px 0 var(--ink-dark), inset 3px 3px 0 #4a4a4a;
+  }
+
+  .primary-random-btn:hover {
+    background-color: var(--ink-dark);
+    color: var(--bg-surface);
+  }
+
+  .primary-random-btn.is-rolling .dice-svg {
+    animation: spin-steps 220ms steps(4) infinite;
+  }
+
+  @keyframes spin-steps {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .action-buttons-row {
+      flex-direction: column;
+    }
+
+    .pixel-action-btn {
+      width: 100%;
+    }
+  }
+</style>
