@@ -199,12 +199,12 @@ const MIN_THUMB_SIZE_BY_CATEGORY: Record<PartCategoryKey, number> = {
   face: 26,
   hair: 26,
   clothing: 24,
-  glasses: 18,
+  glasses: 20,
   eyebrows: 14,
   eyes: 14,
-  beard: 13,
-  detail: 13,
-  mouth: 11,
+  beard: 14,
+  detail: 14,
+  mouth: 12,
   nose: 10,
 };
 
@@ -255,11 +255,15 @@ export function renderIsolatedPartToCanvas(
   let maxX = 0;
   let minY = 32;
   let maxY = 0;
-  for (const [y, x] of item.patches) {
+  let hasDarkOutline = false;
+  for (const [y, x, t] of item.patches) {
     if (x < minX) minX = x;
     if (x > maxX) maxX = x;
     if (y < minY) minY = y;
     if (y > maxY) maxY = y;
+    if (t === '0' || t === '1' || t === 'M' || t === 'K') {
+      hasDarkOutline = true;
+    }
   }
 
   const spanX = maxX - minX + 1;
@@ -296,7 +300,7 @@ export function renderIsolatedPartToCanvas(
       hex = colorMode === 'mono' ? '#F5F5F5' : palette[2];
     } else if (category === 'detail' && token === 'B') {
       hex = colorMode === 'mono' ? '#141414' : palette[1];
-    } else if (hex.toUpperCase() === bgHex.toUpperCase() && token !== 'S') {
+    } else if (!hasDarkOutline && hex.toUpperCase() === bgHex.toUpperCase() && token !== 'S') {
       hex = colorMode === 'mono' ? '#141414' : palette[1];
     }
 
@@ -346,27 +350,36 @@ export function generateAvatarSVG(
 }
 
 /**
- * 「一切交由上天安排」智慧隨機搭配器
+ * 「一切交由上天安排」熱血智慧隨機搭配器
  */
 export function generateRandomAvatarState(prev?: AvatarState): AvatarState {
   const rand = (n: number) => Math.floor(Math.random() * n);
   const hair = rand(HAIRS.length);
-  const isHoodie = Boolean(HAIRS[hair]?.coversEar && (hair === 7 || hair === 16));
+  const hairId = HAIRS[hair]?.id ?? '';
+  const isHoodie = hairId === 'hair-hacker-hood' || hairId === 'hair-shadow-hood';
 
   const bgChoices: BgStyleId[] = ['solid-2', 'solid-3', 'solid-1', 'checker', 'dots'];
   const skinChoices: SkinToneLevel[] = [3, 3, 2, 2, 1];
+
+  const glasses = Math.random() < 0.58 ? 0 : 1 + rand(GLASSES.length - 1);
+  const glassesId = GLASSES[glasses]?.id ?? '';
+  const isTigerMask = glassesId === 'glasses-tiger-white' || glassesId === 'glasses-tiger-gold';
 
   return {
     face: rand(FACES.length),
     hair,
     eyebrows: rand(EYEBROWS.length - 1),
-    eyes: hair === 16 && Math.random() < 0.6 ? 8 : rand(EYES.length),
+    eyes: hairId === 'hair-shadow-hood' && Math.random() < 0.6 ? 13 : rand(EYES.length),
     nose: rand(NOSES.length),
     mouth: rand(MOUTHS.length),
-    glasses: Math.random() < 0.55 ? 0 : 1 + rand(GLASSES.length - 1),
-    beard: isHoodie || Math.random() < 0.72 ? 0 : 1 + rand(BEARDS.length - 1),
-    detail: Math.random() < 0.35 ? 0 : 1 + rand(DETAILS.length - 1),
-    clothing: isHoodie ? 6 : rand(CLOTHES.length),
+    glasses,
+    beard: isHoodie || Math.random() < 0.75 ? 0 : 1 + rand(BEARDS.length - 1),
+    detail: Math.random() < 0.4 ? 0 : 1 + rand(DETAILS.length - 1),
+    clothing: isHoodie
+      ? CLOTHES.findIndex((c) => c.id === 'cloth-hoodie')
+      : isTigerMask && Math.random() < 0.65
+        ? CLOTHES.findIndex((c) => c.id === 'cloth-tiger-wrestler')
+        : rand(CLOTHES.length),
     skinTone: skinChoices[rand(skinChoices.length)],
     bgStyle: bgChoices[rand(bgChoices.length)],
     flipX: prev ? prev.flipX : false,
@@ -375,17 +388,17 @@ export function generateRandomAvatarState(prev?: AvatarState): AvatarState {
 
 export function createDefaultAvatarState(): AvatarState {
   return {
-    face: 0,
-    hair: 1, // 斜瀏海短髮
-    eyebrows: 0,
-    eyes: 0,
-    nose: 0,
-    mouth: 0,
-    glasses: 0,
-    beard: 0,
-    detail: 1, // 雙頰腮紅
-    clothing: 0, // 條紋圓領衫
-    skinTone: 2,
+    face: 0, // 方圓臉 (國夫)
+    hair: 1, // 短飛機頭 (國夫)
+    eyebrows: 0, // 粗平眉
+    eyes: 0, // 方眼
+    nose: 0, // 方塊鼻
+    mouth: 0, // 一字嘴
+    glasses: 0, // 無
+    beard: 0, // 無
+    detail: 0, // 無
+    clothing: 0, // 敞領白學蘭
+    skinTone: 3,
     bgStyle: 'solid-2',
     flipX: false,
   };

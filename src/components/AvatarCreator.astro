@@ -85,14 +85,14 @@ import { PALETTE_PRESETS } from '../lib/palettes';
             </svg>
           </button>
 
-          <!-- 色系調配按鈕 (對應 8-bit_3.jpg 黑白 vs 8-bit_2.jpg 使用者顏色自動搭配) -->
+          <!-- 色系按鈕 -->
           <div class="palette-dropdown-anchor">
             <button
               type="button"
               class="icon-tool-btn palette-trigger-btn"
               id="btn-toggle-palette"
-              title="色系調配"
-              aria-label="色系調配"
+              title="色系"
+              aria-label="色系"
               aria-expanded="false"
             >
               <svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges">
@@ -110,37 +110,37 @@ import { PALETTE_PRESETS } from '../lib/palettes';
               <span class="palette-dot-indicator" id="palette-dot-indicator"></span>
             </button>
 
-            <!-- 色系調配彈出面板 (8-Bit 視窗框體) -->
-            <div class="palette-popover is-hidden" id="palette-popover" role="dialog" aria-label="色系調配設定">
+            <!-- 色系彈出面板 (8-Bit 視窗框體) -->
+            <div class="palette-popover is-hidden" id="palette-popover" role="dialog" aria-label="色系設定">
               <div class="popover-header">
-                <strong>[ 色系調配 // 4-TONE PALETTE ]</strong>
-                <button type="button" class="close-popover-btn" id="btn-close-palette" aria-label="關閉色系面板">✕</button>
+                <strong>[ 色系 // 4-Tone ]</strong>
+                <button type="button" class="close-popover-btn" id="btn-close-palette" aria-label="關閉">✕</button>
               </div>
 
               <p class="popover-hint">
-                預設為黑白線稿；選擇任意顏色後，系統會自動依您的顏色推算 4 階深淺進行搭配。
+                選擇預設色系或自訂顏色，自動推算 4 階色票。
               </p>
 
-              <!-- 使用者自選顏色 (Color Picker) + 恢復黑白按鈕 -->
+              <!-- 使用者自選顏色 + 恢復黑白按鈕 -->
               <div class="user-color-row">
                 <label class="user-color-picker-btn" for="input-user-color">
                   <input type="color" id="input-user-color" value="#88C070" />
                   <span class="color-circle-preview" id="user-color-preview" style="background:#88C070"></span>
                   <span class="user-color-text">
-                    <strong>自選顏色自動搭配</strong>
-                    <small id="user-color-hex" class="tabular-nums">點擊調色 (#88C070)</small>
+                    <strong>自訂顏色</strong>
+                    <small id="user-color-hex" class="tabular-nums">#88C070</small>
                   </span>
                 </label>
 
                 <button type="button" class="mono-restore-btn is-active" id="btn-restore-mono">
                   <span class="mono-half-icon"></span>
-                  <span>無色系 (黑白)</span>
+                  <span>黑白</span>
                 </button>
               </div>
 
-              <!-- 當前自動配出的 4 階色票預覽 (亦可點擊個別微調) -->
+              <!-- 4 階色票微調 -->
               <div class="tone-strip-box">
-                <span class="sub-title">目前色系 4 階深淺（點擊色塊可單獨微調）：</span>
+                <span class="sub-title">色階微調：</span>
                 <div class="tone-squares">
                   {[0, 1, 2, 3].map((idx) => (
                     <label class="tone-item" title={`微調第 ${idx + 1} 階顏色`}>
@@ -152,9 +152,9 @@ import { PALETTE_PRESETS } from '../lib/palettes';
                 </div>
               </div>
 
-              <!-- 經典色系快選 -->
+              <!-- 預設色系 -->
               <div class="preset-colors-section">
-                <span class="sub-title">或選擇預設色系：</span>
+                <span class="sub-title">預設色系：</span>
                 <div class="preset-swatches-grid">
                   {PALETTE_PRESETS.map((preset) => (
                     <button
@@ -174,23 +174,23 @@ import { PALETTE_PRESETS } from '../lib/palettes';
                 </div>
               </div>
 
-              <!-- 彩色模式下的膚色深淺與背景樣式切換 -->
+              <!-- 膚色與背景切換 -->
               <div class="extra-color-options">
                 <div class="option-group">
-                  <span class="sub-title">膚色深淺階：</span>
+                  <span class="sub-title">膚色：</span>
                   <div class="pill-row">
-                    <button type="button" class="mini-pill" data-skin-tone="3">淺亮階</button>
-                    <button type="button" class="mini-pill is-active" data-skin-tone="2">自然中階</button>
-                    <button type="button" class="mini-pill" data-skin-tone="1">深色暗階</button>
+                    <button type="button" class="mini-pill" data-skin-tone="3">淺膚</button>
+                    <button type="button" class="mini-pill is-active" data-skin-tone="2">自然</button>
+                    <button type="button" class="mini-pill" data-skin-tone="1">深膚</button>
                   </div>
                 </div>
                 <div class="option-group">
-                  <span class="sub-title">背景網點：</span>
+                  <span class="sub-title">背景：</span>
                   <div class="pill-row">
-                    <button type="button" class="mini-pill is-active" data-bg-style="solid-2">中色底</button>
-                    <button type="button" class="mini-pill" data-bg-style="solid-3">亮色底</button>
-                    <button type="button" class="mini-pill" data-bg-style="solid-1">深色底</button>
-                    <button type="button" class="mini-pill" data-bg-style="checker">棋盤格</button>
+                    <button type="button" class="mini-pill is-active" data-bg-style="solid-2">中灰</button>
+                    <button type="button" class="mini-pill" data-bg-style="solid-3">亮白</button>
+                    <button type="button" class="mini-pill" data-bg-style="solid-1">深黑</button>
+                    <button type="button" class="mini-pill" data-bg-style="checker">棋盤</button>
                   </div>
                 </div>
               </div>
@@ -348,7 +348,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
   let state: AvatarState = createDefaultAvatarState();
   let colorMode: ColorMode = 'mono';
   let palette: FourTonePalette = [...PALETTE_PRESETS[0].colors] as FourTonePalette;
-  let activeColorLabel = '原始黑白模式';
+  let activeColorLabel = '黑白';
   let activeCategory: PartCategoryKey = 'face';
 
   const mainCanvas = document.getElementById('main-avatar-canvas') as HTMLCanvasElement | null;
@@ -409,7 +409,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     const isMono = colorMode === 'mono';
     btnRestoreMono?.classList.toggle('is-active', isMono);
     if (headerBadge) {
-      headerBadge.textContent = isMono ? 'MODE: 1-BIT 黑白' : `PALETTE: ${activeColorLabel}`;
+      headerBadge.textContent = isMono ? '1-Bit 黑白' : activeColorLabel;
     }
     if (paletteDot) {
       paletteDot.style.backgroundColor = isMono ? '#141414' : palette[2];
@@ -506,23 +506,23 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     }
   });
 
-  // 使用者挑選任意顏色 -> 自動推算 4 階深淺並套用色系！
+  // 使用者挑選任意顏色 -> 自動推算 4 階色票
   inputUserColor?.addEventListener('input', () => {
     const hex = inputUserColor.value.toUpperCase();
     palette = generatePaletteFromSeedColor(hex);
     colorMode = 'palette';
-    activeColorLabel = `自訂色 ${hex}`;
+    activeColorLabel = `自訂 ${hex}`;
 
     if (userColorPreview) userColorPreview.style.backgroundColor = hex;
-    if (userColorHex) userColorHex.textContent = `已套用 (${hex})`;
+    if (userColorHex) userColorHex.textContent = hex;
     document.querySelectorAll('.preset-swatch-btn').forEach((b) => b.classList.remove('is-selected'));
     renderAll();
   });
 
-  // 恢復無色系（原始黑白 8-bit_3 模式）
+  // 恢復黑白模式
   btnRestoreMono?.addEventListener('click', () => {
     colorMode = 'mono';
-    activeColorLabel = '原始黑白模式';
+    activeColorLabel = '黑白';
     document.querySelectorAll('.preset-swatch-btn').forEach((b) => b.classList.remove('is-selected'));
     renderAll();
   });
@@ -534,7 +534,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       if (!raw) return;
       palette = JSON.parse(raw) as FourTonePalette;
       colorMode = 'palette';
-      activeColorLabel = btn.dataset.presetName ?? '預設色系';
+      activeColorLabel = btn.dataset.presetName ?? '自選';
 
       document.querySelectorAll('.preset-swatch-btn').forEach((b) => b.classList.remove('is-selected'));
       btn.classList.add('is-selected');
@@ -542,7 +542,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       if (inputUserColor && userColorPreview && userColorHex) {
         inputUserColor.value = palette[2];
         userColorPreview.style.backgroundColor = palette[2];
-        userColorHex.textContent = `點擊調色 (${palette[2]})`;
+        userColorHex.textContent = palette[2];
       }
       renderAll();
     });
@@ -555,7 +555,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       if (idx >= 0 && idx < 4) {
         palette[idx] = inp.value.toUpperCase();
         colorMode = 'palette';
-        activeColorLabel = '自訂四階微調';
+        activeColorLabel = '自訂色階';
         renderAll();
       }
     });
