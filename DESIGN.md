@@ -6,7 +6,7 @@
 
 - **Theme**: 8-Bit Monochrome Pixel OS Studio（黑灰白 8-Bit 像素製圖系統）
 - **Inspiration**: `8-bit_3.jpg` 的高對比黑灰白像素點陣美學、Macintosh System 1 / Game Boy Camera 1-Bit 視窗介面，以及 `notion-avatar.app` 的直覺單欄部件拆解工作流。
-- **Surface Mode**: Operate（工具工作台模式）—— 置中 32×32 像素主畫布舞台、10 大獨立部件分類格、單獨部件像素選擇視窗，以及底部「一切交由上天安排」與 PNG/SVG 匯出控制列。整體網站介面嚴格維持黑、灰、白無彩度 8-Bit 像素風格。
+- **Surface Mode**: Operate（工具工作台模式）—— 置中 32×32 像素主畫布舞台、10 大獨立部件與套裝分類格、單獨部件像素選擇視窗，以及底部「一切交由上天安排」與 PNG/SVG 匯出控制列。整體網站介面嚴格維持黑、灰、白無彩度 8-Bit 像素風格。
 
 ## Color Tokens (Strict Black / Gray / White 8-Bit Palette)
 

@@ -53,10 +53,15 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       </div>
     </section>
 
-    <!-- 2. 「請選擇一種風格」工具列 ＋ 10 大獨立部位選擇器 -->
+    <!-- 2. 工具列與部位、套裝選擇器 -->
     <section class="picker-section" aria-label="頭像部位與色系選擇">
       <div class="toolbar-row">
-        <h1 class="section-prompt">請選擇一種風格</h1>
+        <button type="button" class="icon-tool-btn reset-avatar-btn" id="btn-reset-avatar" title="重設頭像與所有顏色">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" shape-rendering="crispEdges">
+            <path d="M12 6V4H5V2L1 6L5 10V8H11V12H5V14H13V6Z" />
+          </svg>
+          <span>重設</span>
+        </button>
 
         <div class="tool-trigger-group">
           <!-- 水平翻轉按鈕 (8-Bit 像素圖示) -->
@@ -118,7 +123,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
               </div>
 
               <p class="popover-hint">
-                選擇預設色系或自訂顏色，自動推算 4 階色票。
+                選擇整體色系，自動推算 4 階色票；保留部件的自訂顏色。
               </p>
 
               <!-- 使用者自選顏色 + 恢復黑白按鈕 -->
@@ -199,8 +204,8 @@ import { PALETTE_PRESETS } from '../lib/palettes';
         </div>
       </div>
 
-      <!-- 10 個獨立部位選擇器方塊 (對齊 notion-avatar.app 10 格結構，採用 8-Bit 黑灰白像素插槽) -->
-      <div class="part-category-bar" role="tablist" aria-label="人物頭像 10 大拆解部位">
+      <!-- 部位與套裝選擇器方塊 (8-Bit 黑灰白像素插槽) -->
+      <div class="part-category-bar" role="tablist" aria-label="人物頭像部位與套裝">
         {PART_CATEGORIES.map((cat, idx) => (
           <div class="cat-picker-cell">
             <button
@@ -231,6 +236,25 @@ import { PALETTE_PRESETS } from '../lib/palettes';
             <span class="drawer-title" id="drawer-category-title">臉型 — 選擇元素搭配</span>
           </div>
           <span class="drawer-coord-note tabular-nums">GRID: 32×32 COORD</span>
+        </div>
+
+        <p class="outfit-hint" id="outfit-hint" hidden>
+          套裝會連動部件；更換其中一項，其餘綁定部件會回到各分類第一項。
+        </p>
+
+        <div class="element-color-controls">
+          <div class="element-color-description">
+            <strong id="element-color-title">方圓臉配色</strong>
+            <span id="element-color-status" aria-live="polite">跟隨整體色系</span>
+          </div>
+          <div class="element-color-actions">
+            <label class="element-color-picker" for="input-element-color">
+              <input type="color" id="input-element-color" value="#141414" aria-label="自訂目前元素顏色" />
+              <span class="element-color-chip" id="element-color-chip" aria-hidden="true"></span>
+              <span>自訂顏色</span>
+            </label>
+            <button type="button" class="remove-element-color-btn" id="btn-remove-element-color" disabled>移除顏色</button>
+          </div>
         </div>
 
         {PART_CATEGORIES.map((cat, catIdx) => {
@@ -341,6 +365,8 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     generateAvatarSVG,
     generateRandomAvatarState,
     createDefaultAvatarState,
+    selectAvatarPart,
+    getElementParts,
   } from '../lib/renderer';
 
   // --- State ---
@@ -361,6 +387,18 @@ import { PALETTE_PRESETS } from '../lib/palettes';
   const userColorHex = document.getElementById('user-color-hex');
   const btnRestoreMono = document.getElementById('btn-restore-mono');
   const drawerTitle = document.getElementById('drawer-category-title');
+  const outfitHint = document.getElementById('outfit-hint');
+  const btnFlipX = document.getElementById('btn-flip-x');
+  const inputElementColor = document.getElementById('input-element-color') as HTMLInputElement | null;
+  const elementColorTitle = document.getElementById('element-color-title');
+  const elementColorStatus = document.getElementById('element-color-status');
+  const elementColorChip = document.getElementById('element-color-chip');
+  const btnRemoveElementColor = document.getElementById('btn-remove-element-color') as HTMLButtonElement | null;
+
+  function getActiveElementParts() {
+    const item = PART_ITEMS_MAP[activeCategory][state[activeCategory]];
+    return getElementParts(activeCategory, item);
+  }
 
   function renderAll() {
     // 1. 渲染正中央組合後的大頭照
@@ -368,7 +406,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       renderAvatarToCanvas(mainCanvas, state, colorMode, palette);
     }
 
-    // 2. 渲染 10 個部位分類方塊上的「當前選中單獨元素圖案」
+    // 2. 渲染部位與套裝分類方塊上的當前選項
     PART_CATEGORIES.forEach(({ key }) => {
       const summaryCanvas = document.querySelector<HTMLCanvasElement>(
         `canvas[data-cat-summary-canvas="${key}"]`
@@ -377,7 +415,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       const items = PART_ITEMS_MAP[key];
       const selectedIdx = state[key] as number;
       const item = items[selectedIdx] ?? items[0];
-      renderIsolatedPartToCanvas(summaryCanvas, item, key, colorMode, palette, state.skinTone);
+      renderIsolatedPartToCanvas(summaryCanvas, item, key, colorMode, palette, state);
     });
 
     // 3. 渲染當前打開分類下的所有「單獨拆解元素」選項縮圖
@@ -390,7 +428,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
         const idx = Number(c.dataset.isolatedIdx);
         const item = items[idx];
         if (item) {
-          renderIsolatedPartToCanvas(c, item, activeCategory, colorMode, palette, state.skinTone);
+          renderIsolatedPartToCanvas(c, item, activeCategory, colorMode, palette, state);
         }
       });
     }
@@ -407,9 +445,14 @@ import { PALETTE_PRESETS } from '../lib/palettes';
 
     // 5. 更新色系 UI 顯示 (維持全站黑灰白介面配置)
     const isMono = colorMode === 'mono';
+    const hasActivePartColors = PART_CATEGORIES.some(({ key }) =>
+      key !== 'outfit' && state.partColors[PART_ITEMS_MAP[key][state[key]].id]
+    );
     btnRestoreMono?.classList.toggle('is-active', isMono);
     if (headerBadge) {
-      headerBadge.textContent = isMono ? '1-Bit 黑白' : activeColorLabel;
+      headerBadge.textContent = isMono
+        ? hasActivePartColors ? '黑白＋自訂部件' : '1-Bit 黑白'
+        : activeColorLabel;
     }
     if (paletteDot) {
       paletteDot.style.backgroundColor = isMono ? '#141414' : palette[2];
@@ -431,11 +474,34 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     document.querySelectorAll<HTMLElement>('[data-bg-style]').forEach((btn) => {
       btn.classList.toggle('is-active', btn.dataset.bgStyle === state.bgStyle);
     });
+
+    // 6. 目前元素的獨立配色；套裝操作會套用到整組實際部件。
+    const activeItem = PART_ITEMS_MAP[activeCategory][state[activeCategory]];
+    const parts = getActiveElementParts();
+    const colors = parts.map(({ item }) => state.partColors[item.id]);
+    const customColors = colors.filter(Boolean);
+    const sharedColor = colors[0] && colors.every((color) => color === colors[0]) ? colors[0] : undefined;
+    const canColor = activeItem.patches.length > 0;
+    if (elementColorTitle) elementColorTitle.textContent = `${activeItem.name}配色`;
+    if (elementColorStatus) {
+      elementColorStatus.textContent = !canColor ? '此元素沒有可上色內容'
+        : sharedColor ? `自訂 ${sharedColor}`
+        : customColors.length > 0 ? '各部件使用不同配色'
+        : '跟隨整體色系';
+    }
+    if (inputElementColor) {
+      inputElementColor.disabled = !canColor;
+      inputElementColor.value = sharedColor ?? (isMono ? '#141414' : palette[2]);
+      if (elementColorChip) elementColorChip.style.backgroundColor = inputElementColor.value;
+    }
+    if (btnRemoveElementColor) btnRemoveElementColor.disabled = customColors.length === 0;
+    btnFlipX?.classList.toggle('is-active', state.flipX);
+    btnFlipX?.setAttribute('aria-pressed', String(state.flipX));
   }
 
   // --- Events ---
 
-  // 切換 10 個部位分類 Tab
+  // 切換部位與套裝分類 Tab
   document.querySelectorAll<HTMLButtonElement>('.cat-box-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const key = (btn.dataset.catKey ?? 'face') as PartCategoryKey;
@@ -453,8 +519,11 @@ import { PALETTE_PRESETS } from '../lib/palettes';
 
       const catObj = PART_CATEGORIES.find((c) => c.key === key);
       if (drawerTitle && catObj) {
-        drawerTitle.textContent = `${catObj.label} — 選擇拆解元素搭配`;
+        drawerTitle.textContent = key === 'outfit'
+          ? '套裝 — 一次搭配整組部件'
+          : `${catObj.label} — 選擇拆解元素搭配`;
       }
+      if (outfitHint) outfitHint.hidden = key !== 'outfit';
 
       renderAll();
     });
@@ -466,18 +535,31 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       const cat = btn.dataset.selectCat as PartCategoryKey;
       const idx = Number(btn.dataset.selectIdx);
       if (cat) {
-        (state as unknown as Record<string, number>)[cat] = idx;
+        state = selectAvatarPart(state, cat, idx);
         renderAll();
       }
     });
   });
 
   // 水平翻轉按鈕
-  const btnFlipX = document.getElementById('btn-flip-x');
   btnFlipX?.addEventListener('click', () => {
     state.flipX = !state.flipX;
-    btnFlipX.classList.toggle('is-active', state.flipX);
-    btnFlipX.setAttribute('aria-pressed', String(state.flipX));
+    renderAll();
+  });
+
+  inputElementColor?.addEventListener('input', () => {
+    const partColors = { ...state.partColors };
+    for (const { item } of getActiveElementParts()) {
+      partColors[item.id] = inputElementColor.value.toUpperCase();
+    }
+    state = { ...state, partColors };
+    renderAll();
+  });
+
+  btnRemoveElementColor?.addEventListener('click', () => {
+    const partColors = { ...state.partColors };
+    for (const { item } of getActiveElementParts()) delete partColors[item.id];
+    state = { ...state, partColors };
     renderAll();
   });
 
@@ -598,6 +680,24 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     }, 45);
   });
 
+  document.getElementById('btn-reset-avatar')?.addEventListener('click', () => {
+    if (rollInterval !== null) window.clearInterval(rollInterval);
+    rollInterval = null;
+    document.getElementById('btn-destiny-random')?.classList.remove('is-rolling');
+    state = createDefaultAvatarState();
+    colorMode = 'mono';
+    palette = [...PALETTE_PRESETS[0].colors];
+    activeColorLabel = '黑白';
+    const seedColor = palette[2];
+    if (inputUserColor) inputUserColor.value = seedColor;
+    if (userColorPreview) userColorPreview.style.backgroundColor = seedColor;
+    if (userColorHex) userColorHex.textContent = seedColor;
+    document.querySelectorAll('.preset-swatch-btn').forEach((btn) => btn.classList.remove('is-selected'));
+    palettePopover?.classList.add('is-hidden');
+    btnTogglePalette?.setAttribute('aria-expanded', 'false');
+    document.querySelector<HTMLButtonElement>('[data-cat-key="face"]')?.click();
+  });
+
   // 下載 PNG 與 SVG
   function triggerDownload(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
@@ -634,7 +734,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     grid.querySelectorAll<HTMLCanvasElement>('canvas[data-isolated-idx]').forEach((c) => {
       const idx = Number(c.dataset.isolatedIdx);
       if (items[idx]) {
-        renderIsolatedPartToCanvas(c, items[idx], key, colorMode, palette, state.skinTone);
+        renderIsolatedPartToCanvas(c, items[idx], key, colorMode, palette, state);
       }
     });
   });
@@ -826,13 +926,6 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     justify-content: space-between;
   }
 
-  .section-prompt {
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: var(--ink-black);
-  }
-
   .tool-trigger-group {
     display: flex;
     align-items: center;
@@ -855,6 +948,14 @@ import { PALETTE_PRESETS } from '../lib/palettes';
 
   .icon-tool-btn:hover {
     background-color: var(--bg-subtle);
+  }
+
+  .icon-tool-btn.reset-avatar-btn {
+    width: auto;
+    gap: 0.45rem;
+    padding: 0 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 700;
   }
 
   .icon-tool-btn.is-active {
@@ -1126,22 +1227,24 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     color: var(--bg-surface);
   }
 
-  /* 10 Part Category Row (8-Bit Monochrome Pixel Slots) */
+  /* Part and Outfit Category Row (8-Bit Monochrome Pixel Slots) */
   .part-category-bar {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.6rem;
     justify-items: center;
   }
 
   @media (min-width: 768px) {
     .part-category-bar {
-      grid-template-columns: repeat(10, 1fr);
+      grid-template-columns: repeat(11, minmax(0, 1fr));
       gap: 0.5rem;
     }
   }
 
   .cat-picker-cell {
+    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1149,8 +1252,9 @@ import { PALETTE_PRESETS } from '../lib/palettes';
   }
 
   .cat-box-btn {
-    width: 60px;
-    height: 60px;
+    width: 100%;
+    max-width: 60px;
+    aspect-ratio: 1;
     border: 3px solid var(--ink-black);
     padding: 4px;
     background-color: var(--bg-surface);
@@ -1184,7 +1288,92 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     color: var(--ink-black);
   }
 
+  .element-color-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border-gray);
+  }
+
+  .element-color-description {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+  }
+
+  .element-color-description span {
+    color: var(--ink-muted);
+    font-size: 0.72rem;
+  }
+
+  .element-color-actions {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .element-color-picker,
+  .remove-element-color-btn {
+    min-height: 36px;
+    border: 2px solid var(--ink-black);
+    padding: 0.35rem 0.55rem;
+    background: var(--bg-surface);
+    color: var(--ink-black);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .element-color-picker {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+  }
+
+  .element-color-picker input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: inherit;
+  }
+
+  .element-color-picker:focus-within {
+    outline: 2px dashed var(--ink-black);
+    outline-offset: 3px;
+  }
+
+  .element-color-chip {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--ink-black);
+    background: var(--ink-black);
+  }
+
+  .element-color-picker:hover,
+  .remove-element-color-btn:hover:not(:disabled) {
+    background: var(--bg-subtle);
+  }
+
+  .element-color-picker:has(input:disabled),
+  .remove-element-color-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
   /* Options Drawer (8-Bit Monochrome Inventory Window) */
+  .outfit-hint {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
   .part-options-drawer {
     background-color: var(--bg-surface);
     border: 3px solid var(--ink-black);
@@ -1424,10 +1613,6 @@ import { PALETTE_PRESETS } from '../lib/palettes';
       margin-bottom: 0.1rem;
     }
 
-    .section-prompt {
-      font-size: 1.05rem;
-    }
-
     .icon-tool-btn {
       width: 38px;
       height: 38px;
@@ -1439,7 +1624,7 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     }
 
     .part-category-bar {
-      grid-template-columns: repeat(10, 1fr);
+      grid-template-columns: repeat(11, minmax(0, 1fr));
       gap: 0.35rem;
     }
 

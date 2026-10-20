@@ -1,6 +1,7 @@
 import {
   type AvatarState,
   type AvatarPartItem,
+  type AvatarPartCategoryKey,
   type BgStyleId,
   type PartCategoryKey,
   type SkinToneLevel,
@@ -14,71 +15,83 @@ import {
   BEARDS,
   DETAILS,
   CLOTHES,
+  OUTFITS,
+  PART_ITEMS_MAP,
 } from './avatar-data';
-import { type ColorMode, type FourTonePalette, MONO_PALETTE } from './palettes';
+import {
+  type ColorMode,
+  type FourTonePalette,
+  MONO_PALETTE,
+  generatePaletteFromSeedColor,
+} from './palettes';
 
 export const GRID_SIZE = 32;
+
+const LAYER_ORDER: AvatarPartCategoryKey[] = [
+  'face', 'clothing', 'detail', 'eyebrows', 'eyes', 'nose', 'beard', 'mouth', 'hair', 'glasses',
+];
+
+interface AvatarElementPart {
+  category: AvatarPartCategoryKey;
+  item: AvatarPartItem;
+}
+
+/** 套裝拆成實際部件，讓配色與縮圖沿用相同圖層順序。 */
+export function getElementParts(category: PartCategoryKey, item: AvatarPartItem): AvatarElementPart[] {
+  if (category !== 'outfit') return [{ category, item }];
+  const outfit = OUTFITS.find((candidate) => candidate.id === item.id);
+  return LAYER_ORDER.flatMap((key) => {
+    const index = outfit?.parts[key];
+    return index === undefined ? [] : [{ category: key, item: PART_ITEMS_MAP[key][index] }];
+  });
+}
 
 /**
  * 依固定 32x32 座標系，將 10 個獨立部位元素由底至頂疊加合成
  */
-export function composeAvatarTokens(state: AvatarState): string[][] {
+function composeAvatarLayers(state: AvatarState) {
   const grid: string[][] = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '.')
+  );
+  const parts: (AvatarElementPart | undefined)[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array.from({ length: GRID_SIZE }, () => undefined)
   );
 
   const hairItem = HAIRS[state.hair] ?? HAIRS[1];
   const hideEar = Boolean(hairItem?.coversEar);
 
-  const applyPart = (item: AvatarPartItem | undefined, skipLeftEar = false) => {
-    if (!item) return;
-    for (const [y, x, token] of item.patches) {
+  const applyPart = (part: AvatarElementPart, skipLeftEar = false) => {
+    for (const [y, x, token] of part.item.patches) {
       if (skipLeftEar && x < 9 && y >= 12 && y <= 18) {
         continue;
       }
       if (y >= 0 && y < GRID_SIZE && x >= 0 && x < GRID_SIZE) {
         grid[y][x] = token;
+        parts[y][x] = part;
       }
     }
   };
 
-  // Z-order 固定座標圖層堆疊：
-  // 1. 臉型外框、耳朵與脖子 (y: 4..28；若配戴全包覆兜帽/鮑伯頭則自動收起外露左耳)
-  applyPart(FACES[state.face] ?? FACES[0], hideEar);
-
-  // 2. 衣領與服裝 (y: 25..31)
-  applyPart(CLOTHES[state.clothing] ?? CLOTHES[0]);
-
-  // 3. 裝飾細節：腮紅、耳環、美人痣、傷疤
-  applyPart(DETAILS[state.detail] ?? DETAILS[0], hideEar);
-
-  // 4. 眉毛 (y: 10..13)
-  applyPart(EYEBROWS[state.eyebrows] ?? EYEBROWS[0]);
-
-  // 5. 眼睛 (y: 12..16)
-  applyPart(EYES[state.eyes] ?? EYES[0]);
-
-  // 6. 鼻子 (y: 13..20)
-  applyPart(NOSES[state.nose] ?? NOSES[0]);
-
-  // 7. 鬍鬚 (y: 18..25，位於嘴巴底層讓嘴唇在落腮鬍中清晰可見)
-  applyPart(BEARDS[state.beard] ?? BEARDS[0]);
-
-  // 8. 嘴巴 (y: 19..24)
-  applyPart(MOUTHS[state.mouth] ?? MOUTHS[0]);
-
-  // 9. 髮型與帽飾 (y: 1..28)
-  applyPart(hairItem);
-
-  // 10. 眼鏡配件 (y: 11..16，位於最上層橫跨鼻樑與雙眼)
-  applyPart(GLASSES[state.glasses] ?? GLASSES[0]);
+  // 保持固定圖層順序；全包覆髮型會收起臉型與細節中的左耳像素。
+  for (const category of LAYER_ORDER) {
+    const items = PART_ITEMS_MAP[category];
+    const item = category === 'hair' ? hairItem : items[state[category]] ?? items[0];
+    applyPart({ category, item }, hideEar && (category === 'face' || category === 'detail'));
+  }
 
   // 若啟用水平翻轉 (Flip X)
   if (state.flipX) {
-    return grid.map((row) => [...row].reverse());
+    return {
+      tokens: grid.map((row) => [...row].reverse()),
+      parts: parts.map((row) => [...row].reverse()),
+    };
   }
 
-  return grid;
+  return { tokens: grid, parts };
+}
+
+export function composeAvatarTokens(state: AvatarState): string[][] {
+  return composeAvatarLayers(state).tokens;
 }
 
 function resolveBgToneIndex(bgStyle: BgStyleId, x: number, y: number): 1 | 2 | 3 {
@@ -144,9 +157,43 @@ export function resolvePixelHex(
   }
 }
 
-/**
- * 渲染完整合成後的 32x32 大頭照至 Canvas
- */
+function createPixelColorResolver(state: AvatarState, colorMode: ColorMode, palette: FourTonePalette) {
+  const localPalettes = new Map<string, FourTonePalette>();
+
+  return (token: string, x: number, y: number, part?: AvatarElementPart): string => {
+    // 頭髮與衣服內的 S 仍是皮膚，跟隨臉型配色，而不是該部件的材質色。
+    if (token === 'S') {
+      const face = part?.category === 'face' ? part.item : FACES[state.face] ?? FACES[0];
+      const skinColor = state.partColors[face.id];
+      return skinColor ?? resolvePixelHex(token, x, y, state, colorMode, palette);
+    }
+
+    const color = part && state.partColors[part.item.id];
+    if (!part || !color || token === '.') {
+      return resolvePixelHex(token, x, y, state, colorMode, palette);
+    }
+    if (token === 'B') return color;
+
+    let localPalette = localPalettes.get(part.item.id);
+    if (!localPalette) {
+      localPalette = generatePaletteFromSeedColor(color);
+      if (part.category !== 'face') {
+        // 讓主要材質精確使用所選色，並保留其餘色階；白髮與線條也能直接上色。
+        const counts = [0, 0, 0, 0];
+        for (const [, , value] of part.item.patches) {
+          const tone = ['0K', '1D', '2M', '3L'].findIndex((tokens) => tokens.includes(value));
+          if (tone >= 0) counts[tone]++;
+        }
+        const mainTone = counts.indexOf(Math.max(...counts));
+        localPalette[mainTone] = color;
+      }
+      localPalettes.set(part.item.id, localPalette);
+    }
+    return resolvePixelHex(token, x, y, state, 'palette', localPalette);
+  };
+}
+
+/** 渲染完整合成後的 32x32 大頭照至 Canvas。 */
 export function renderAvatarToCanvas(
   canvas: HTMLCanvasElement,
   state: AvatarState,
@@ -160,14 +207,15 @@ export function renderAvatarToCanvas(
   const width = canvas.width;
   const height = canvas.height;
   const scale = width / GRID_SIZE;
-  const tokens = composeAvatarTokens(state);
+  const { tokens, parts } = composeAvatarLayers(state);
+  const resolveColor = createPixelColorResolver(state, colorMode, palette);
 
   ctx.clearRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = false;
 
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
-      ctx.fillStyle = resolvePixelHex(tokens[y][x], x, y, state, colorMode, palette);
+      ctx.fillStyle = resolveColor(tokens[y][x], x, y, parts[y][x]);
       ctx.fillRect(
         Math.floor(x * scale),
         Math.floor(y * scale),
@@ -199,6 +247,7 @@ const MIN_THUMB_SIZE_BY_CATEGORY: Record<PartCategoryKey, number> = {
   face: 26,
   hair: 26,
   clothing: 24,
+  outfit: 32,
   glasses: 20,
   eyebrows: 14,
   eyes: 14,
@@ -217,7 +266,7 @@ export function renderIsolatedPartToCanvas(
   category: PartCategoryKey,
   colorMode: ColorMode,
   palette: FourTonePalette,
-  skinTone: SkinToneLevel = 3
+  state: AvatarState = createDefaultAvatarState()
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -274,43 +323,31 @@ export function renderIsolatedPartToCanvas(
   const offsetY = Math.floor((boxSize - spanY) / 2) - minY;
   const scale = width / boxSize;
 
-  const dummyState: AvatarState = {
-    face: 0,
-    hair: 1,
-    eyebrows: 0,
-    eyes: 0,
-    nose: 0,
-    mouth: 0,
-    glasses: 0,
-    beard: 0,
-    detail: 0,
-    clothing: 0,
-    skinTone,
-    bgStyle: 'solid-3',
-    flipX: false,
-  };
+  const resolveColor = createPixelColorResolver(state, colorMode, palette);
+  for (const part of getElementParts(category, item)) {
+    const hasCustomColor = Boolean(state.partColors[part.item.id]);
+    for (const [y, x, token] of part.item.patches) {
+      const localX = x + offsetX;
+      const localY = y + offsetY;
+      if (localX < 0 || localX >= boxSize || localY < 0 || localY >= boxSize) continue;
 
-  for (const [y, x, token] of item.patches) {
-    const localX = x + offsetX;
-    const localY = y + offsetY;
-    if (localX < 0 || localX >= boxSize || localY < 0 || localY >= boxSize) continue;
+      let hex = resolveColor(token, x, y, part);
+      if (!hasCustomColor && category === 'face' && token === 'S') {
+        hex = colorMode === 'mono' ? '#F5F5F5' : palette[2];
+      } else if (!hasCustomColor && category === 'detail' && token === 'B') {
+        hex = colorMode === 'mono' ? '#141414' : palette[1];
+      } else if (!hasCustomColor && !hasDarkOutline && hex.toUpperCase() === bgHex.toUpperCase() && token !== 'S') {
+        hex = colorMode === 'mono' ? '#141414' : palette[1];
+      }
 
-    let hex = resolvePixelHex(token, x, y, dummyState, colorMode, palette);
-    if (category === 'face' && token === 'S') {
-      hex = colorMode === 'mono' ? '#F5F5F5' : palette[2];
-    } else if (category === 'detail' && token === 'B') {
-      hex = colorMode === 'mono' ? '#141414' : palette[1];
-    } else if (!hasDarkOutline && hex.toUpperCase() === bgHex.toUpperCase() && token !== 'S') {
-      hex = colorMode === 'mono' ? '#141414' : palette[1];
+      ctx.fillStyle = hex;
+      ctx.fillRect(
+        Math.floor(localX * scale),
+        Math.floor(localY * scale),
+        Math.ceil(scale),
+        Math.ceil(scale)
+      );
     }
-
-    ctx.fillStyle = hex;
-    ctx.fillRect(
-      Math.floor(localX * scale),
-      Math.floor(localY * scale),
-      Math.ceil(scale),
-      Math.ceil(scale)
-    );
   }
 }
 
@@ -322,16 +359,17 @@ export function generateAvatarSVG(
   colorMode: ColorMode,
   palette: FourTonePalette
 ): string {
-  const tokens = composeAvatarTokens(state);
+  const { tokens, parts } = composeAvatarLayers(state);
+  const resolveColor = createPixelColorResolver(state, colorMode, palette);
   const rects: string[] = [];
 
   for (let y = 0; y < GRID_SIZE; y++) {
     let startX = 0;
-    let currentHex = resolvePixelHex(tokens[y][0], 0, y, state, colorMode, palette);
+    let currentHex = resolveColor(tokens[y][0], 0, y, parts[y][0]);
 
     for (let x = 1; x <= GRID_SIZE; x++) {
       const hex =
-        x < GRID_SIZE ? resolvePixelHex(tokens[y][x], x, y, state, colorMode, palette) : '';
+        x < GRID_SIZE ? resolveColor(tokens[y][x], x, y, parts[y][x]) : '';
       if (hex !== currentHex) {
         rects.push(
           `<rect x="${startX}" y="${y}" width="${x - startX}" height="1" fill="${currentHex}"/>`
@@ -365,7 +403,7 @@ export function generateRandomAvatarState(prev?: AvatarState): AvatarState {
   const glassesId = GLASSES[glasses]?.id ?? '';
   const isTigerMask = glassesId === 'glasses-tiger-white' || glassesId === 'glasses-tiger-gold';
 
-  return {
+  const state: AvatarState = {
     face: rand(FACES.length),
     hair,
     eyebrows: rand(EYEBROWS.length - 1),
@@ -380,10 +418,56 @@ export function generateRandomAvatarState(prev?: AvatarState): AvatarState {
       : isTigerMask && Math.random() < 0.65
         ? CLOTHES.findIndex((c) => c.id === 'cloth-tiger-wrestler')
         : rand(CLOTHES.length),
+    outfit: 0,
     skinTone: skinChoices[rand(skinChoices.length)],
     bgStyle: bgChoices[rand(bgChoices.length)],
     flipX: prev ? prev.flipX : false,
+    partColors: { ...prev?.partColors },
   };
+
+  // 連帽衫必須與兜帽成套，避免隨機產生只有衣身的半套組合。
+  if (!isHoodie && CLOTHES[state.clothing]?.id === 'cloth-hoodie') {
+    state.clothing = 0;
+  }
+  const outfitIndex = OUTFITS.findIndex((outfit, index) => index > 0 &&
+    Object.entries(outfit.parts).every(([key, value]) =>
+      state[key as Exclude<PartCategoryKey, 'outfit'>] === value
+    )
+  );
+  state.outfit = Math.max(0, outfitIndex);
+  return state;
+}
+
+/** 套裝只綁定指定部件；拆開任一部件時，其餘綁定部件回到各分類第一項。 */
+export function selectAvatarPart(
+  state: AvatarState,
+  category: PartCategoryKey,
+  index: number
+): AvatarState {
+  if (state[category] === index) return state;
+
+  const nextState = { ...state };
+  const currentOutfit = OUTFITS[state.outfit];
+  if (category === 'outfit' || category in (currentOutfit?.parts ?? {})) {
+    for (const key of Object.keys(currentOutfit?.parts ?? {}) as Exclude<PartCategoryKey, 'outfit'>[]) {
+      nextState[key] = 0;
+    }
+    nextState.outfit = 0;
+  }
+
+  if (category === 'outfit') {
+    nextState.outfit = index;
+    Object.assign(nextState, OUTFITS[index]?.parts);
+    return nextState;
+  }
+
+  nextState[category] = index;
+  const linkedOutfit = OUTFITS.findIndex((outfit) =>
+    outfit.autoEquip && outfit.parts[category] === index
+  );
+  return linkedOutfit > 0
+    ? selectAvatarPart(nextState, 'outfit', linkedOutfit)
+    : nextState;
 }
 
 export function createDefaultAvatarState(): AvatarState {
@@ -398,8 +482,10 @@ export function createDefaultAvatarState(): AvatarState {
     beard: 0, // 無
     detail: 0, // 無
     clothing: 0, // 敞領白學蘭
+    outfit: 0, // 無套裝
     skinTone: 3,
     bgStyle: 'solid-2',
     flipX: false,
+    partColors: {},
   };
 }
