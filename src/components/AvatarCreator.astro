@@ -1,6 +1,10 @@
 ---
 import { PART_CATEGORIES, PART_ITEMS_MAP } from '../lib/avatar-data';
 import { PALETTE_PRESETS } from '../lib/palettes';
+
+const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
 ---
 
 <div class="page-container">
@@ -8,14 +12,13 @@ import { PALETTE_PRESETS } from '../lib/palettes';
   <header class="topbar">
     <a href={import.meta.env.BASE_URL} class="brand-link">
       <div class="brand-logo-box" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 16 16" fill="none" shape-rendering="crispEdges">
-          <rect x="1" y="1" width="14" height="14" fill="#141414" />
-          <rect x="2" y="2" width="12" height="12" fill="#FFFFFF" />
-          <rect x="3" y="3" width="10" height="2" fill="#141414" />
-          <rect x="4" y="6" width="2" height="3" fill="#141414" />
-          <rect x="10" y="6" width="2" height="3" fill="#141414" />
-          <rect x="5" y="11" width="6" height="2" fill="#141414" />
-        </svg>
+        <img
+          class="brand-logo-mark"
+          src={`${baseUrl}logo-mark.png`}
+          alt=""
+          width="32"
+          height="32"
+        />
       </div>
       <div class="brand-text-wrap">
         <span class="brand-title">8-BIT 頭像製作</span>
@@ -726,7 +729,8 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     triggerDownload(blob, '8bit-avatar.svg');
   });
 
-  // 初始繪製所有元素與畫布
+  // 首次載入隨機配置並繪製所有元素與畫布
+  state = generateRandomAvatarState(state);
   PART_CATEGORIES.forEach(({ key }) => {
     const grid = document.querySelector<HTMLElement>(`.isolated-parts-grid[data-options-grid="${key}"]`);
     if (!grid) return;
@@ -778,6 +782,12 @@ import { PALETTE_PRESETS } from '../lib/palettes';
     box-shadow: inset -2px -2px 0 var(--bg-mid), inset 2px 2px 0 var(--bg-surface);
     display: grid;
     place-items: center;
+  }
+
+  .brand-logo-mark {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
   }
 
   .brand-text-wrap {

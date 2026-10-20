@@ -1,6 +1,10 @@
 ---
 import '../styles/global.css';
 import AvatarCreator from '../components/AvatarCreator.astro';
+
+const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
 ---
 
 <!doctype html>
@@ -13,6 +17,7 @@ import AvatarCreator from '../components/AvatarCreator.astro';
       name="description"
       content="使用 Astro 打造的 8-Bit 像素大頭照創建工具，拆解 32x32 角色五官與配件自由搭配，內建「一切交由上天安排」隨機按鈕與 1-Bit / 2-Bit 四階色系調配。"
     />
+    <link rel="icon" type="image/png" sizes="32x32" href={`${baseUrl}favicon.png`} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
